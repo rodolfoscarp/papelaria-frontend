@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import MaterialReactTable from "material-react-table";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
@@ -9,61 +9,7 @@ import TableBody from "@mui/material/TableBody";
 import { Button, SvgIcon } from "@mui/material";
 import { Box } from "@mui/system";
 import { IconButton } from "@material-ui/core";
-
-const data = [
-  {
-    notaFiscal: "00001005",
-    cliente: "Cliente1",
-    vendedor: "Vendedor1",
-    dataVenda: "19/10/2022 - 14:00",
-    valorTotal: 15.0,
-    opcoes: "",
-    items: [
-      {
-        produto: "Mouse",
-        quatidade: 10,
-        precoUnitario: 10.0,
-        totalProdutos: 100.0,
-        percentComissao: 0.05,
-        comissao: 20,
-      },
-      {
-        produto: "Teclado",
-        quatidade: 10,
-        precoUnitario: 10.0,
-        totalProdutos: 100.0,
-        percentComissao: 0.05,
-        comissao: 20,
-      },
-    ],
-  },
-  {
-    notaFiscal: 0,
-    cliente: "Cliente1",
-    vendedor: "Vendedor1",
-    dataVenda: "19/10/2022 - 14:00",
-    valorTotal: 15.0,
-    opcoes: "",
-    items: [
-      {
-        produto: "Mouse",
-        quatidade: 10,
-        precoUnitario: 10.0,
-        totalProdutos: 100.0,
-        percentComissao: 0.05,
-        comissao: 20,
-      },
-      {
-        produto: "Teclado",
-        quatidade: 10,
-        precoUnitario: 10.0,
-        totalProdutos: 100.0,
-        percentComissao: 0.05,
-        comissao: 20,
-      },
-    ],
-  },
-];
+import api from "../../api";
 
 const DetalheTable = ({ itensVenda }) => {
   return (
@@ -86,7 +32,7 @@ const DetalheTable = ({ itensVenda }) => {
               sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
             >
               <TableCell component="th" scope="item">
-                {item.name}
+                {item.produto}
               </TableCell>
               <TableCell align="right">{item.quatidade}</TableCell>
               <TableCell align="right">{item.precoUnitario}</TableCell>
@@ -126,6 +72,52 @@ const Opcoes = ({ onDelete, onEdit }) => {
 };
 
 const DataTable = ({ onDelete, onEdit }) => {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    api
+      .get("/venda")
+      .then((res) => {
+        setIsLoading(true);
+
+        const formatedData = res.data.results.map(
+          ({ numero_nota, cliente_nome, vendedor_nome, data_hora, items }) => ({
+            notaFiscal: numero_nota,
+            cliente: cliente_nome,
+            vendedor: vendedor_nome,
+            dataVenda: data_hora,
+            valorTotal: items.reduce(
+              (prev, curr) => curr.total_produto + prev,
+              0
+            ),
+            items: items.map(
+              ({
+                quantidade,
+                produto_descricao,
+                valor_unitario,
+                total_produto,
+                percentual_comissao,
+                comissao,
+              }) => ({
+                produto: produto_descricao,
+                quatidade: quantidade,
+                precoUnitario: valor_unitario,
+                totalProdutos: total_produto,
+                percentComissao: percentual_comissao,
+                comissao: comissao,
+              })
+            ),
+          })
+        );
+
+        setData(formatedData);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
   const columns = useMemo(
     () => [
       { header: "Nota Fiscal", accessorKey: "notaFiscal" },
@@ -161,6 +153,7 @@ const DataTable = ({ onDelete, onEdit }) => {
         },
       }}
       positionActionsColumn="last"
+      state={isLoading}
     />
   );
 };
